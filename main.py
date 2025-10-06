@@ -1,11 +1,11 @@
 import pandas as pd
-import requests
-from requests.structures import CaseInsensitiveDict
+#import requests
+#from requests.structures import CaseInsensitiveDict
 import tkinter as tk
 from tkinter import ttk, messagebox
 
 API_KEY = "a67e8979758f4feea51637156bbdaf25"
-CSV_PATH = r"C:\Users\aarni\OneDrive\Desktop\Python\KyberhyökkäysAnalyysi\Kyberhyökkäys_data.csv"
+CSV_PATH = r"C:\Users\aarni.annanolli\Python\Kyberturvallisuus\Kyberhyökkäys_data.csv"
 
 try:
     df = pd.read_csv(CSV_PATH)
@@ -26,35 +26,66 @@ except FileNotFoundError:
 #    return "unknown"
 
 def estimate_attack_likelihood(user_input):
+    # Dynamic rules: list of dicts with condition lambdas, score, and reason text
+    rules = [
+        {
+            "condition": lambda u: u["failed_logins"] > 3,
+            "score": 25,
+            "reason": "Multiple failed login attempts"
+        },
+        {
+            "condition": lambda u: u["unusual_time_access"] == 1,
+            "score": 20,
+            "reason": "Access during unusual hours"
+        },
+        {
+            "condition": lambda u: u["ip_reputation_score"] < 0.3,
+            "score": 20,
+            "reason": "Low IP reputation score"
+        },
+        {
+            "condition": lambda u: u["encryption_used"] in ["None", "DES", "Ei mitään"],
+            "score": 15,
+            "reason": "Weak or no encryption used"
+        },
+        {
+            "condition": lambda u: u["protocol_type"].upper() == "UDP",
+            "score": 10,
+            "reason": "Unreliable UDP protocol used"
+        },
+        {
+            "condition": lambda u: u["network_packet_size"] > df["network_packet_size"].mean() * 1.5,
+            "score": 10,
+            "reason": "Unusually large network packet size"
+        },
+        {
+            "condition": lambda u: u["session_duration"] > df["session_duration"].mean() * 2,
+            "score": 10,
+            "reason": "Long session duration"
+        }
+    ]
+
     score = 0
     reasons = []
-    if user_input["failed_logins"] > 3:
-        score += 25; reasons.append("Multiple failed login attempts")
-    if user_input["unusual_time_access"] == 1:
-        score += 20; reasons.append("Access during unusual hours")
-    if user_input["ip_reputation_score"] < 0.3:
-        score += 20; reasons.append("Low IP reputation score")
-    if user_input["encryption_used"] in ["None", "DES"]:
-        score += 15; reasons.append("Weak or no encryption used")
-    if user_input["protocol_type"].upper() == "UDP":
-        score += 10; reasons.append("Unreliable UDP protocol used")
-    if user_input["network_packet_size"] > df["network_packet_size"].mean() * 1.5:
-        score += 10; reasons.append("Unusually large network packet size")
-    if user_input["session_duration"] > df["session_duration"].mean() * 2:
-        score += 10; reasons.append("Long session duration")
+    for rule in rules:
+        if rule["condition"](user_input):
+            score += rule["score"]
+            reasons.append(rule["reason"])
+
     score = min(score, 100)
     return score, reasons
 
 root = tk.Tk()
-root.title("Kyberhyökkäys Todennäköisyys")
+root.title("Cyberattack Analyzer")
 root.geometry("700x650")
 root.resizable(False, False)
 
-tk.Label(root, text="Cybersecurity Attack Likelihood Analyzer", font=("Segoe UI", 16, "bold")).pack(pady=10)
-frame = tk.Frame(root); frame.pack(pady=10)
+tk.Label(root, text="Cyberattack Likelihood", font=("Segoe UI", 16, "bold")).pack(pady=10)
+frame = tk.Frame(root)
+frame.pack(pady=10)
 
 protocol_options = ["TCP", "UDP", "HTTP", "HTTPS"]
-encryption_options = ["AES", "RSA", "DES", "None"]
+encryption_options = ["AES", "RSA", "DES", "Ei mitään"]
 browser_options = ["Chrome", "Firefox", "Edge", "Safari", "Opera"]
 yes_no_options = [0, 1]
 
